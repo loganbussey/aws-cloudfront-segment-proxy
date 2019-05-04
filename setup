@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+echo -e "Hello, "$USER".  This script will help you setup a Cloudfront Distribution for a Segment proxy and request a SSL Certificate for the domains that you choose.\n"
+
+echo -n "Enter your Segment CDN domain name [ENTER]: "
+read domain_cdn
+
+echo -n "Enter your Segment tracking API domain name [ENTER]: "
+read domain_api
+
+echo "Which validation method would you like to use for your SSL Certificate? "
+cat << METHODS
+EMAIL
+DNS
+METHODS
+echo -n "Which would you like to use? "
+read validation_method
+
+echo -n "Enter a CloudFormation stack name [segment-proxy] [ENTER]: "
+read stack_name
+
+if [ "$stack_name" == "" ]; then
+  stack_name="segment-proxy"
+fi
+
+echo -e "Creating stack...\n"
+
+aws cloudformation create-stack --template-body file://template.yml --stack-name ${stack_name} --parameters ParameterKey=DomainCDN,ParameterValue="${domain_cdn}" ParameterKey=DomainAPI,ParameterValue=${domain_api} ParameterKey=ValidationMethod,ParameterValue=${validation_method}
+
+echo -e "\nTime to validate your Certificate. This needs to be complete before the Cloudfront distribution will be created...\n"
+
+if [ "$validation_method" == "EMAIL" ]; then
+  echo "Check your domain administrator’s email account for an email from Amazon to accept..."
+fi
+
+echo -e "For more information on the next steps to validate your certificate, go to https://console.aws.amazon.com/acm/home\n"

@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS CloudFormation for creating a Segment proxy'
+
+Parameters:
+  DomainCDN:
+    Type: String
+  DomainAPI:
+    Type: String
+  ValidationMethod:
+    Type: String
+
+Resources:
+
+  WildcardCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref DomainCDN
+      ValidationMethod: !Ref ValidationMethod
+      SubjectAlternativeNames:
+        - !Ref DomainAPI
+
+  SegmentCDNProxy:
+    DependsOn: WildcardCertificate
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Ref DomainCDN
+        Comment: 'Segment CDN Proxy'
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - 'DELETE'
+            - 'GET'
+            - 'HEAD'
+            - 'OPTIONS'
+            - 'PATCH'
+            - 'POST'
+            - 'PUT'
+          Compress: true
+          ForwardedValues:
+            QueryString: true
+            Cookies:
+              Forward: 'all'
+          TargetOriginId: 'Segment CDN'
+          ViewerProtocolPolicy: 'redirect-to-https'
+        Enabled: true
+        HttpVersion: 'http2'
+        ViewerCertificate:
+          AcmCertificateArn: !Ref WildcardCertificate
+          MinimumProtocolVersion: 'TLSv1.1_2016'
+          SslSupportMethod: 'sni-only'
+        Origins:
+          -
+            Id: 'Segment CDN'
+            DomainName: 'cdn.segment.io'
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: 'https-only'
+
+  SegmentAPIProxy:
+    DependsOn: WildcardCertificate
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Ref DomainAPI
+        Comment: 'Segment API Proxy'
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - 'DELETE'
+            - 'GET'
+            - 'HEAD'
+            - 'OPTIONS'
+            - 'PATCH'
+            - 'POST'
+            - 'PUT'
+          Compress: true
+          ForwardedValues:
+            QueryString: true
+            Cookies:
+              Forward: 'all'
+          TargetOriginId: 'Segment API'
+          ViewerProtocolPolicy: 'redirect-to-https'
+        Enabled: true
+        HttpVersion: 'http2'
+        ViewerCertificate:
+          AcmCertificateArn: !Ref WildcardCertificate
+          MinimumProtocolVersion: 'TLSv1.1_2016'
+          SslSupportMethod: 'sni-only'
+        Origins:
+          -
+            Id: 'Segment API'
+            DomainName: 'api.segment.io'
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: 'https-only'
